@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:4000";
+// 👇 OVDJE JE BITNA PROMJENA
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  "https://sto-raditi-danas.onrender.com";
 
 const CITY_OPTIONS = [
   { value: "", label: "Svi gradovi" },
@@ -429,7 +432,8 @@ export default function Events() {
                     )}
                     {ev.city && (
                       <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-slate-300">
-                        {ev.city}</span>
+                        {ev.city}
+                      </span>
                     )}
                   </div>
 
