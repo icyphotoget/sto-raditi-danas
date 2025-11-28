@@ -28,12 +28,22 @@ export default function Home() {
           />
         </div>
 
-        <Link
-          to="/events"
-          className="inline-block mt-6 px-6 py-3 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-semibold hover:bg-emerald-500/30 transition"
-        >
-          Pogledaj sve događaje →
-        </Link>
+        {/* CTA GUMBI */}
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 sm:justify-center">
+          <Link
+            to="/events"
+            className="px-6 py-3 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-semibold hover:bg-emerald-500/30 transition"
+          >
+            Pogledaj sve događaje →
+          </Link>
+
+          <Link
+            to="/ideas"
+            className="px-6 py-3 rounded-full border border-slate-600 text-slate-200 font-semibold hover:border-emerald-400 hover:text-emerald-200 transition"
+          >
+            Ne znam što bi → predloži mi
+          </Link>
+        </div>
       </section>
 
       {/* POPULARNE KATEGORIJE */}
