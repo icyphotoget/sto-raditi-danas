@@ -2,10 +2,8 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// 👇 OVDJE JE BITNA PROMJENA
 const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  "https://sto-raditi-danas.onrender.com";
+  import.meta.env.VITE_API_BASE || "https://sto-raditi-danas.onrender.com";
 
 const CITY_OPTIONS = [
   { value: "", label: "Svi gradovi" },
@@ -56,23 +54,19 @@ function getDateRange(filter) {
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
-      0,
-      0,
-      0
+      0, 0, 0
     );
     const to = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
-      23,
-      59,
-      59
+      23, 59, 59
     );
     return { from: from.toISOString(), to: to.toISOString() };
   }
 
   if (filter === "weekend") {
-    const day = now.getDay(); // 0 = ned, 6 = sub
+    const day = now.getDay();
     const daysUntilSaturday = (6 - day + 7) % 7;
     const daysUntilSunday = (7 - day + 7) % 7;
 
@@ -80,17 +74,13 @@ function getDateRange(filter) {
       now.getFullYear(),
       now.getMonth(),
       now.getDate() + daysUntilSaturday,
-      0,
-      0,
-      0
+      0, 0, 0
     );
     const sunday = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate() + daysUntilSunday,
-      23,
-      59,
-      59
+      23, 59, 59
     );
 
     return { from: saturday.toISOString(), to: sunday.toISOString() };
@@ -99,59 +89,32 @@ function getDateRange(filter) {
   return { from: null, to: null };
 }
 
-// Helper: odluči u koji tab spada event
 function matchesTab(ev, tab) {
   if (tab === "all") return true;
 
   const cat = (ev.category || "").toUpperCase();
-  const title = (ev.title || "").toLowerCase();
-  const desc = (ev.description || "").toLowerCase();
-  const text = `${title} ${desc}`;
+  const text = `${(ev.title || "").toLowerCase()} ${(ev.description || "").toLowerCase()}`;
 
   if (tab === "nightlife") {
     if (["KONCERT", "DJ PARTY", "PLESNJAK", "FESTIVAL"].includes(cat)) return true;
-    if (
-      text.match(
-        /party|rave|club|klub|doček|nova godina|boogaloo|gallery club|lift club|katran/
-      )
-    ) {
-      return true;
-    }
+    if (text.match(/party|rave|club|klub|boogaloo|gallery|katran|doček|nova godina/)) return true;
     return false;
   }
 
   if (tab === "family") {
-    if (
-      text.match(
-        /obitelj|obiteljski|djeca|djecji|klinac|klinci|kids|family|obiteljske ulaznice|muzej smijeha|božićna čarolija|iluzionist|magicomed/
-      )
-    ) {
-      return true;
-    }
+    if (text.match(/djeca|kids|obitelj|family|radionice|klinci/)) return true;
     return false;
   }
 
   if (tab === "culture") {
     if (["PREDSTAVA", "KONFERENCIJA"].includes(cat)) return true;
-    if (
-      text.match(
-        /kazališ|kazalište|konferencij|predavanje|izložb|festival|muzej|klasičn|klavir/
-      )
-    ) {
-      return true;
-    }
+    if (text.match(/kazališ|predavanje|izložb|muzej|klasičn|festival/)) return true;
     return false;
   }
 
   if (tab === "sport") {
     if (cat === "SPORT") return true;
-    if (
-      text.match(
-        /turnir|maraton|utrka|trčanje|trcanje|nogomet|košarka|kosarka|fitness|crossfit/
-      )
-    ) {
-      return true;
-    }
+    if (text.match(/turnir|utrka|maraton|nogomet|košarka|trčanje/)) return true;
     return false;
   }
 
@@ -170,11 +133,10 @@ export default function Events() {
   const [activeTab, setActiveTab] = useState("all");
   const [error, setError] = useState(null);
 
-  // ⬇ na učitavanje stranice čitamo ?tab= iz URL-a
+  // Učitaj tab iz URL-a
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get("tab");
-
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
       setActiveTab(tabParam);
     }
@@ -186,7 +148,6 @@ export default function Events() {
       setError(null);
 
       const params = new URLSearchParams();
-
       if (city) params.set("city", city);
       if (category) params.set("category", category);
 
@@ -194,8 +155,7 @@ export default function Events() {
       if (from) params.set("from", from);
       if (to) params.set("to", to);
 
-      const url = `${API_BASE}/api/events?${params.toString()}`;
-      const res = await fetch(url);
+      const res = await fetch(`${API_BASE}/api/events?${params.toString()}`);
       if (!res.ok) throw new Error("Greška pri dohvaćanju događaja");
 
       const json = await res.json();
@@ -210,27 +170,19 @@ export default function Events() {
 
   useEffect(() => {
     fetchEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city, category, dateFilter]);
 
-  // Klik na tab → promijeni state + napiši u URL ?tab=
   function handleTabClick(tabId) {
     setActiveTab(tabId);
 
     const params = new URLSearchParams(location.search);
-    if (tabId === "all") {
-      params.delete("tab");
-    } else {
-      params.set("tab", tabId);
-    }
+    if (tabId === "all") params.delete("tab");
+    else params.set("tab", tabId);
 
-    navigate(
-      {
-        pathname: location.pathname,
-        search: params.toString(),
-      },
-      { replace: true }
-    );
+    navigate({
+      pathname: location.pathname,
+      search: params.toString(),
+    }, { replace: true });
   }
 
   const filteredEvents = events.filter((ev) => matchesTab(ev, activeTab));
@@ -238,58 +190,49 @@ export default function Events() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
+
       {/* HEADER */}
       <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4">
+
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Događaji</h1>
-            <p className="text-sm text-slate-400">
-              Filtriraj po gradu, kategoriji, datumu i tipu izlaska.
-            </p>
+            <p className="text-sm text-slate-400">Filtriraj po gradu, kategoriji i datumu.</p>
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
+
             {/* Grad */}
             <div className="flex flex-col text-xs">
-              <span className="mb-1 text-slate-400 uppercase tracking-wide">
-                Grad
-              </span>
+              <span className="mb-1 text-slate-400 uppercase">Grad</span>
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm focus:border-emerald-400"
               >
                 {CITY_OPTIONS.map((opt) => (
-                  <option key={opt.value || "all"} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.label} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
 
             {/* Kategorija */}
             <div className="flex flex-col text-xs">
-              <span className="mb-1 text-slate-400 uppercase tracking-wide">
-                Kategorija
-              </span>
+              <span className="mb-1 text-slate-400 uppercase">Kategorija</span>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm focus:border-emerald-400"
               >
                 {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value || "all-cat"} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.label} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
 
             {/* Period */}
             <div className="flex flex-col text-xs">
-              <span className="mb-1 text-slate-400 uppercase tracking-wide">
-                Period
-              </span>
+              <span className="mb-1 text-slate-400 uppercase">Period</span>
               <div className="flex gap-2">
                 {DATE_FILTERS.map((f) => (
                   <button
@@ -306,6 +249,7 @@ export default function Events() {
                 ))}
               </div>
             </div>
+
           </div>
         </div>
 
@@ -326,171 +270,118 @@ export default function Events() {
               </button>
             ))}
           </div>
-          <p className="mt-1 text-[11px] text-slate-500">
-            {activeTabDef.subtitle}
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500">{activeTabDef.subtitle}</p>
         </div>
       </header>
 
       {/* MAIN */}
       <main className="mx-auto max-w-6xl px-4 py-6">
+
         {/* Status */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-          <div>
+        <div className="mb-4 text-xs text-slate-400 flex justify-between">
+          <span>
             Prikazujem{" "}
-            <span className="font-semibold text-slate-100">
-              {filteredEvents.length}
-            </span>{" "}
+            <strong className="text-slate-100">{filteredEvents.length}</strong>{" "}
             događaja
-            {city ? (
-              <>
-                {" "}
-                za <span className="font-semibold">{city}</span>
-              </>
-            ) : null}
-            {category ? (
-              <>
-                {" "}
-                u kategoriji{" "}
-                <span className="font-semibold">{category}</span>
-              </>
-            ) : null}
-            {activeTab !== "all" ? (
-              <>
-                {" "}
-                (tab:{" "}
-                <span className="font-semibold">{activeTabDef.label}</span>)
-              </>
-            ) : null}
-            {dateFilter !== "all" ? (
-              <>
-                {" "}
-                ({DATE_FILTERS.find((f) => f.value === dateFilter)?.label})
-              </>
-            ) : null}
-          </div>
+          </span>
           <button
             onClick={fetchEvents}
-            className="text-xs rounded-full border border-slate-700 px-3 py-1 hover:border-emerald-400 hover:text-emerald-300"
+            className="rounded-full border border-slate-700 px-3 py-1 hover:border-emerald-400 hover:text-emerald-300"
           >
-            Osvježi podatke
+            Osvježi
           </button>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
             {error}
           </div>
         )}
 
         {/* Loading */}
         {loading && (
-          <div className="mb-4 text-sm text-slate-400">Učitavam događaje…</div>
+          <p className="text-sm text-slate-400 mb-4">Učitavam događaje…</p>
         )}
 
-        {/* Empty / Grid */}
-        {filteredEvents.length === 0 && !loading ? (
-          <div className="mt-10 text-center text-sm text-slate-400">
-            Trenutno nema događaja za ovaj filter. Probaj promijeniti tab,
-            grad, kategoriju ili period.
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredEvents.map((ev) => (
+        {/* Empty */}
+        {!loading && filteredEvents.length === 0 && (
+          <p className="text-sm text-slate-400">
+            Nema događaja za ovaj filter. Promijeni tab, grad, kategoriju ili period.
+          </p>
+        )}
+
+        {/* GRID */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredEvents.map((ev) => {
+            const imageUrl =
+              ev.image_url || ev.image || ev.photo_url || null;
+
+            return (
               <article
                 key={ev.id}
-                className="flex flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 shadow-sm shadow-slate-950/50"
+                className="flex flex-col rounded-xl border border-slate-800 bg-slate-900/70 overflow-hidden"
               >
-                {/* Slika */}
-                <div className="h-40 w-full bg-slate-800">
-                  {ev.image_url ? (
+                {/* IMAGE */}
+                <div className="h-40 bg-slate-800">
+                  {imageUrl ? (
                     <img
-                      src={ev.image_url}
+                      src={imageUrl}
                       alt={ev.title}
-                      className="h-full w-full object-cover"
+                      className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">
+                    <div className="flex items-center justify-center h-full text-xs text-slate-500">
                       Nema slike
                     </div>
                   )}
                 </div>
 
-                {/* Content */}
-                <div className="flex flex-1 flex-col gap-2 p-4">
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wide">
-                    {ev.category && (
-                      <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-emerald-300">
-                        {ev.category}
-                      </span>
-                    )}
-                    {ev.source && (
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-slate-400">
-                        {ev.source}
-                      </span>
-                    )}
-                    {ev.city && (
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-slate-300">
-                        {ev.city}
-                      </span>
-                    )}
+                {/* CONTENT */}
+                <div className="p-3 text-xs flex flex-col gap-1">
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-sm font-semibold text-slate-50 line-clamp-2">
+                      {ev.title}
+                    </h3>
+
+                   {/* CATEGORY BADGE – prikazuj samo ako nije entrio / demo / unknown */}
+{ev.category &&
+  !["entrio", "demo", "unknown"].includes(ev.category.toLowerCase()) && (
+    <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-[1px] text-[10px] text-slate-300">
+      {ev.category}
+    </span>
+  )}
                   </div>
 
-                  <h2 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-50">
-                    {ev.title}
-                  </h2>
-
-                  <div className="space-y-1 text-xs text-slate-400">
-                    {ev.venue_name && (
-                      <div>
-                        <span className="text-slate-500">Lokacija: </span>
-                        <span>{ev.venue_name}</span>
-                      </div>
-                    )}
-                    {ev.start_time && (
-                      <div>
-                        <span className="text-slate-500">Vrijeme: </span>
-                        <span>{formatDateTime(ev.start_time)}</span>
-                      </div>
-                    )}
-                    {ev.price_min !== null && (
-                      <div>
-                        <span className="text-slate-500">Cijena: </span>
-                        {ev.price_max && ev.price_max !== ev.price_min ? (
-                          <span>
-                            {ev.price_min} – {ev.price_max} €
-                          </span>
-                        ) : (
-                          <span>od {ev.price_min} €</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {ev.description && (
-                    <p className="mt-1 line-clamp-3 text-xs text-slate-400">
-                      {ev.description}
+                  {ev.start_time && (
+                    <p className="text-[11px] text-slate-400">
+                      {formatDateTime(ev.start_time)}
                     </p>
                   )}
 
-                  <div className="mt-auto pt-2">
-                    {ev.url && (
-                      <a
-                        href={ev.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center text-xs font-medium text-emerald-300 hover:text-emerald-200"
-                      >
-                        Detalji & karte →
-                      </a>
-                    )}
-                  </div>
+                  {(ev.venue_name || ev.city) && (
+                    <p className="text-[11px] text-slate-500">
+                      {ev.venue_name}
+                      {ev.city ? ` · ${ev.city}` : ""}
+                    </p>
+                  )}
+
+                  {ev.url && (
+                    <a
+                      href={ev.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 text-[11px] text-emerald-300 hover:text-emerald-200"
+                    >
+                      Detalji & karte →
+                    </a>
+                  )}
                 </div>
               </article>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </main>
     </div>
   );
