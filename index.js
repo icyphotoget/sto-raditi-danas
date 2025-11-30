@@ -3,37 +3,26 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const supabase = require("./supabaseClient"); // Supabase JS client
-const { runImporterFromApi } = require("./importerRunner"); // wrapper za importer
+const supabase = require("./supabaseClient");
+const { runImporterFromApi } = require("./importerRunner");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Health check / test ruta
+// Health check
 app.get("/", (req, res) => {
   res.json({ message: "Sto raditi danas API radi 👋 (Supabase HTTP verzija)" });
 });
 
 /**
  * GET /api/events
- *
- * Query parametri (svi opcionalni):
- *  - city       (npr. "Zagreb")
- *  - category   (npr. "KONCERT")
- *  - source     (npr. "entrio" ili "demo")
- *  - from       (ISO datum/vrijeme, npr. "2025-12-01T00:00:00.000Z")
- *  - to         (ISO datum/vrijeme)
- *
- * Ako se "from" i "to" ne pošalju → NE filtriramo po datumu,
- * nego vraćamo sve evente (uklj. one sa start_time = null).
  */
 app.get("/api/events", async (req, res) => {
   try {
     const { city, category, source, from, to } = req.query;
 
-    // 1) Bazni upit: svi eventi, sortirani po start_time
     let q = supabase
       .from("events")
       .select(
@@ -42,28 +31,11 @@ app.get("/api/events", async (req, res) => {
       .order("start_time", { ascending: true })
       .limit(500);
 
-    // 2) Filtriranje po gradu
-    if (city) {
-      q = q.eq("city", city);
-    }
-
-    // 3) Filtriranje po kategoriji
-    if (category) {
-      q = q.eq("category", category);
-    }
-
-    // 4) Filtriranje po izvoru (entrio, demo, ...)
-    if (source) {
-      q = q.eq("source", source);
-    }
-
-    // 5) Filtriranje po datumu (samo ako je poslano)
-    if (from) {
-      q = q.gte("start_time", from);
-    }
-    if (to) {
-      q = q.lte("start_time", to);
-    }
+    if (city) q = q.eq("city", city);
+    if (category) q = q.eq("category", category);
+    if (source) q = q.eq("source", source);
+    if (from) q = q.gte("start_time", from);
+    if (to) q = q.lte("start_time", to);
 
     const { data, error } = await q;
 
@@ -80,17 +52,7 @@ app.get("/api/events", async (req, res) => {
 });
 
 /**
- * POST /api/import
- *
- * Pokreće importer (scrapere) kroz importerRunner.
- * Zaštita: moraš poslati tajni ključ, inače 401.
- *
- * Način poziva:
- *  - POST /api/import?secret=TAJNA
- *    ili
- *  - Header: x-import-secret: TAJNA
- *
- * TAJNA = vrijednost iz process.env.IMPORT_SECRET
+ * POST /api/import  (scraper trigger)
  */
 app.post("/api/import", async (req, res) => {
   try {
@@ -115,105 +77,140 @@ app.post("/api/import", async (req, res) => {
 });
 
 /**
- * POST /api/ideas
+ * POST /api/ideas  → AI generirane ideje
  *
- * Prima:
- *  - mood        (string, npr "opušteno / lagano")
- *  - weather     ("sun" | "rain" | "cold" | "")
- *  - budget      ("free" | "low" | "normal" | "")
- *  - time        (minute, npr "60")
- *  - contextCity (grad, npr "Zagreb")
- *  - company     ("solo" | "couple" | "group" | "")
- *
- * Vraća: { ideas: [ { title, description, tags[] } ] }
+ * Body:
+ *  - mood
+ *  - weather
+ *  - budget
+ *  - time
+ *  - contextCity
+ *  - company
  */
 app.post("/api/ideas", async (req, res) => {
   try {
-    const { mood, weather, budget, time, contextCity, company } = req.body;
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res
-        .status(500)
-        .json({ error: "OPENAI_API_KEY nije postavljen na serveru" });
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("OPENAI_API_KEY nije postavljen");
+      return res.status(500).json({ error: "AI konfiguracija nije postavljena (nema OPENAI_API_KEY)" });
     }
 
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+
+    const {
+      mood = "",
+      weather = "any",
+      budget = "any",
+      time,
+      contextCity = "Zagreb",
+      company = "any",
+    } = body;
+
+    console.log("AI IDEAS request:", body);
+
+    // Prompt za model
+    const userPayload = {
+      mood,
+      weather,
+      budget,
+      time: Number(time) || 60,
+      city: contextCity,
+      company,
+    };
+
     const prompt = `
-Ti si AI asistent za preporuke aktivnosti za servis "Što raditi danas".
+Ti si osobni asistent za slobodno vrijeme u Hrvatskoj.
 
-Korisnik ti je dao sljedeće podatke:
-- Raspoloženje: ${mood || "-"}
-- Vrijeme: ${weather || "-"}
-- Budžet: ${budget || "-"}
-- Vrijeme na raspolaganju (minute): ${time || "-"}
-- Grad / lokacija: ${contextCity || "-"}
-- S kim je: ${company || "-"}
+Na temelju sljedećih informacija generiraj 5–10 konkretnih aktivnosti što osoba može raditi SADA:
 
-Tvoj zadatak:
-- Generiraj 6 konkretnih ideja što osoba može raditi danas.
-- Kombiniraj "doma", "vani", "u gradu", ovisno o vremenu i budžetu.
-- Ako je budžet "free" ili "low" -> prednost daj besplatnim ili jeftinim aktivnostima.
-- Ako je vrijeme "rain" ili "cold" -> prednost aktivnostima u zatvorenom.
-- Ako je company "solo" -> ideje za solo; "couple" -> u paru; "group" -> s ekipom.
+- raspoloženje (mood)
+- vrijeme vani (weather: sun, rain, cold, any)
+- budžet (budget: free, low, normal, any)
+- vrijeme na raspolaganju u minutama (time)
+- grad (city)
+- s kim je (company: solo, couple, group, any)
 
-Vrati odgovor isključivo kao validan JSON array bez ikakvog dodatnog teksta, u formatu:
-[
-  {
-    "title": "kratak naslov ideje",
-    "description": "konkretan opis što napraviti, praktično, max 3-4 rečenice",
-    "tags": ["besplatno", "vanjsko", "solo"]
-  },
-  ...
-]
+Vrati isključivo JSON ovog oblika:
+
+{
+  "ideas": [
+    {
+      "title": "Kratka šetnja Bundekom + kava",
+      "description": "Vrlo konkretan opis što napraviti, gdje otići, koliko traje, zašto je to dobro u ovom kontekstu.",
+      "tags": ["besplatno", "vanjsko", "lagano"]
+    }
+  ]
+}
+
+- title neka bude kratak i jasan (max 80 znakova)
+- description neka bude praktičan, konkretan, bez generičkih fraza
+- tags su kratke riječi na hrvatskom: tip (npr. "vanjsko", "unutra", "hrana", "društvo", "romantično", "obitelj", "sport"), budžet ("besplatno", "jeftino", "normalno", "skuplje"), vibe ("chill", "aktivno" itd.)
+- Ako je grad Zagreb, slobodno spomeni konkretne lokacije (Bundek, Jarun, Maksimir, Centar, kvartovi...) ako ima smisla.
+- Ako je budžet "free" ili "low", izbjegavaj skupe prijedloge.
+- Ako je vrijeme "rain" ili "cold", fokusiraj se više na indoor aktivnosti.
+
+SVE vrati kao validan JSON objekt, bez dodatnog teksta, bez objašnjenja izvan JSON-a.
+Ulazni podaci (user context) su:
+${JSON.stringify(userPayload)}
 `;
 
+    // Poziv prema OpenAI (chat.completions)
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.9,
+        model: "gpt-4.1-mini",
+        messages: [
+          { role: "system", content: "Ti si pametan, praktičan asistent za slobodno vrijeme." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.8,
+        response_format: { type: "json_object" },
       }),
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      console.error("OpenAI API error:", response.status, text);
-      return res.status(500).json({ error: "OpenAI API error" });
+      const txt = await response.text();
+      console.error("OpenAI error:", response.status, txt);
+      return res
+        .status(500)
+        .json({ error: "AI servis je vratio grešku", details: txt });
     }
 
     const data = await response.json();
 
-    const rawContent =
-      data?.choices?.[0]?.message?.content?.trim() || "[]";
+    let content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error("OpenAI: nema contenta u odgovoru", data);
+      return res.status(500).json({ error: "AI odgovor je prazan" });
+    }
 
-    let ideas;
+    let parsed;
     try {
-      ideas = JSON.parse(rawContent);
-      if (!Array.isArray(ideas)) throw new Error("Not an array");
+      parsed = JSON.parse(content);
     } catch (e) {
-      console.error("JSON parse error iz OpenAI odgovora:", e, rawContent);
-      ideas = [];
+      console.error("Ne mogu parsirati AI JSON content:", content);
+      return res.status(500).json({ error: "AI je vratio neispravan JSON" });
+    }
+
+    // Osiguraj da uvijek postoji ideas array
+    if (!Array.isArray(parsed.ideas)) {
+      parsed.ideas = [];
     }
 
     res.json({
-      ideas,
+      ideas: parsed.ideas,
       meta: {
-        count: ideas.length,
-        mood,
-        weather,
-        budget,
-        time,
-        contextCity,
-        company,
+        count: parsed.ideas.length,
+        ...userPayload,
       },
     });
   } catch (err) {
     console.error("Greška u /api/ideas:", err);
-    res.status(500).json({ error: "AI ideas error" });
+    res.status(500).json({ error: "Greška pri AI generiranju ideja" });
   }
 });
 
