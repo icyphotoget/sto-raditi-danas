@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
@@ -18,9 +17,9 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2",
-    "openai": "^6.9.1",
     "pg": "^8.16.3",
-    "puppeteer": "^24.31.0"
+    "puppeteer": "^24.31.0",
+    "openai": "^4.78.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
