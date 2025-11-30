@@ -5,7 +5,7 @@ require("dotenv").config();
 const supabase = require("./supabaseClient");
 const { fetchDemoEvents } = require("./scrapers/demoScraper");
 const { fetchHtmlEvents } = require("./scrapers/htmlScraperExample");
-const { fetchEntrioEvents } = require("./scrapers/entrioScraper");
+const { fetchEntrioEvents } = require("./scrapers/entrioPuppeteerScraper");
 
 // helper za parsiranje cijene
 function toNumberOrNull(value) {
