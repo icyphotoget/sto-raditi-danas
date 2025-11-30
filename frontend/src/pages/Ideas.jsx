@@ -337,11 +337,7 @@ export default function Ideas() {
                       <div className="font-semibold text-slate-50 line-clamp-1">
                         {ev.title}
                       </div>
-                      {ev.category && (
-                        <span className="ml-2 rounded-full border border-slate-700 bg-slate-800 px-2 py-[1px] text-[10px] text-slate-300">
-                          {ev.category}
-                        </span>
-                      )}
+                      
                     </div>
                     {ev.venue_name && (
                       <div className="text-[11px] text-slate-400">
